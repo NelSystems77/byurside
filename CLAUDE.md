@@ -344,8 +344,12 @@ wellbeing/{docId}
 ---
 
 ### useEscuchar.ts (Speech Recognition)
-**Config:** `es-CR`, continuous: false, interimResults: false  
-**`modoOffline`:** true cuando `!navigator.onLine` (en DEV permite simular voz)  
+**Config:** `continuous: false`, `interimResults: true` (para texto en vivo durante escucha)  
+**Idioma adaptativo (`getSpeechLang()`):** `es-CR` solo en Chrome desktop. iOS, Android, Edge y Safari desktop → `es-ES` (los otros ASR engines rechazan es-CR con error `network`).  
+**`iniciarEscucha`:** Función SÍNCRONA (no async). iOS Safari requiere que `.start()` se llame dentro del mismo call stack del user-gesture handler — cualquier `await` antes de `.start()` rompe el contexto de permiso y el micrófono falla silenciosamente.  
+**`detenerEscucha`:** Sin dependencia en `escuchando` state (usa solo refs). Evita el race condition donde el usuario suelta el botón antes de que `onstart` dispare (escuchando aún es `false`).  
+**`transcripcionInterim`:** Texto en vivo que llega mientras el usuario habla (vacía cuando llega el resultado final).  
+**`modoOffline`:** true cuando `!navigator.onLine`. Se sincroniza via event listeners online/offline.  
 **`simularVoz(texto)`:** Solo funciona en DEV con `modoOffline: true`
 
 ---
@@ -447,6 +451,8 @@ Usar este patrón en TODOS los hooks y componentes. Nunca hardcodear `"paciente_
 | Textos < 10px — ilegibles para adultos mayores | `Dashboard.tsx`, `RoleSelector.tsx`, `CaregiverDashboard.tsx`, `CaregiverMeds.tsx` | Elevados a mínimo `text-xs` (12px); instrucciones del paciente a `text-sm` (14px); etiquetas de tab nav de 8px a 11px |
 | `setMapReady is not defined` — crash al abrir tab Mapa | `CaregiverMap.tsx` | `whenReady={() => setMapReady(true)}` en `MapContainer` usaba variable inexistente. Eliminada la prop — `MapController` ya maneja `invalidateSize()` |
 | Error `network` en Edge — voz no funciona (Don Carlos no puede hablar) | `useEscuchar.ts` | Edge usa ASR de Microsoft que no soporta `es-CR` → lanza `network`. Fix: `getSpeechLang()` retorna `es-ES` en Edge/Safari. Además: (1) instancia se recrea tras cada error (`recognitionRef = null` en `onerror`), (2) auto-retry hasta 2 veces en error `network` transitorio vía `autoRetry` state + `useEffect` con 700ms. |
+| Voz NO funciona en iOS, Android ni Windows — micrófono silencioso | `useEscuchar.ts` | Tres bugs combinados: (1) `getSpeechLang()` no detectaba iOS/Android → retornaba `es-CR` que Apple ASR y Google ASR rechazan con `network`. Fix: iOS/Android → `es-ES`. (2) `iniciarEscucha` era `async` con `await verificarConexion()` antes de `.start()` — iOS requiere que `.start()` se llame sincrónicamente en el user-gesture handler; el `await` rompía ese contexto. Fix: función ahora síncrona, check de `navigator.onLine` inline. (3) `detenerEscucha` dependía de `escuchando` state (stale closure) → si el usuario soltaba el botón antes de que `onstart` disparara, `escuchando` era `false` y `.stop()` nunca se llamaba. Fix: eliminada dependencia en `escuchando`, ahora usa solo `recognitionRef`. |
+| Hold-to-talk no mostraba texto en tiempo real mientras se hablaba | `useEscuchar.ts`, `Dashboard.tsx` | `interimResults: false` → nunca se mostraba lo que el ASR estaba detectando. Fix: `interimResults: true`, nuevo estado `transcripcionInterim` para texto en vivo. Dashboard ahora muestra el texto interim en VisualBridge durante la escucha (con tipo `usuario`). |
 
 ---
 
@@ -600,7 +606,8 @@ git push origin main
 
 ---
 
-**Document Version:** 2.7 | **Updated:** May 11, 2026  
+**Document Version:** 2.8 | **Updated:** May 12, 2026  
+**Cambios v2.8:** Fix crítico de voz multiplataforma en `useEscuchar.ts` — tres bugs combinados que causaban que el micrófono no funcionara en iOS, Android ni Windows: (1) `getSpeechLang()` ahora retorna `es-ES` para iOS y Android (Apple/Google ASR rechazan `es-CR` con error `network`); (2) `iniciarEscucha` convertida a función síncrona — iOS Safari requiere que `.start()` se llame en el mismo call stack del user-gesture handler (el `await verificarConexion()` anterior rompía ese contexto); (3) `detenerEscucha` reescrita sin dependencia en `escuchando` state para evitar stale closure — antes, si el usuario soltaba el botón antes de que `onstart` disparara, `.stop()` nunca se llamaba. También: `interimResults: true` + nuevo estado `transcripcionInterim` para mostrar texto en vivo durante la escucha. Dashboard actualizado: VisualBridge muestra texto interim durante escucha, `onTouchCancel`/`onMouseLeave` añadidos al botón micrófono. 83/83 tests pasando.  
 **Cambios v2.7:** Bug de voz corregido en `useEscuchar.ts` — Edge lanzaba `error network` porque Microsoft ASR no soporta `es-CR`. Fix: `getSpeechLang()` retorna `es-ES` en Edge/Safari. También: instancia de Recognition siempre se recrea tras error (eliminando instancias rotas), y auto-retry hasta 2 veces en error de red transitorio via `autoRetry` state + `useEffect`.  
 **Cambios v2.6:** Bug `setMapReady is not defined` corregido en `CaregiverMap.tsx` — eliminada prop `whenReady` que referenciaba variable inexistente; `MapController` ya maneja `invalidateSize()`. Bug documentado en §9.  
 **Cambios v2.5:** Repositorio subido a GitHub (https://github.com/NelSystems77/byurside.git). Deploy principal migrado a Vercel (https://byurside.vercel.app/) con `vercel.json` (buildCommand, outputDirectory, SPA rewrites). Variables de entorno ahora deben configurarse en el panel de Vercel. `vercel.json` añadido a §3 (estructura). §11 actualizado con sección Vercel. §13 actualizado: `git push origin main` como comando de deploy principal (Vercel CI/CD automático).  

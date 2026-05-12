@@ -20,7 +20,7 @@ interface DashboardProps {
 export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: DashboardProps) => {
   const { profile, loading } = useAuth();
   const { hablar, estaHablando, vocesListas } = useVoz();
-  const { escuchando, transcripcion, error: errorVoz, modoOffline, iniciarEscucha, detenerEscucha, reintentarEscucha, simularVoz, limpiarTranscripcion } = useEscuchar();
+  const { escuchando, transcripcion, transcripcionInterim, error: errorVoz, modoOffline, iniciarEscucha, detenerEscucha, reintentarEscucha, simularVoz, limpiarTranscripcion } = useEscuchar();
   const { descontarDosis } = useSalud();
   const { procesarComando } = useIA();
   const { registrarAgua, consumoHoy, porcentajeMeta } = useAgua();
@@ -93,7 +93,7 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
   };
 
   const alSoltarMicro = () => {
-    if (escuchando) detenerEscucha();
+    detenerEscucha();
   };
 
   // --- PROCESAMIENTO DE VOZ ---
@@ -261,9 +261,21 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
       {/* --- ÁREA PRINCIPAL --- */}
       <main className="flex-1 w-full flex flex-col items-center justify-center p-6 space-y-6 relative overflow-hidden">
         <VisualBridge
-          mensaje={estaProcesando ? 'Pensando...' : ultimoMensajeAsistente}
-          quienHabla={profile?.asistenteNombre || 'Asistente'}
-          tipo="asistente"
+          mensaje={
+            escuchando && transcripcionInterim
+              ? transcripcionInterim
+              : escuchando
+              ? 'Escuchando...'
+              : estaProcesando
+              ? 'Pensando...'
+              : ultimoMensajeAsistente
+          }
+          quienHabla={
+            escuchando
+              ? (profile?.pacienteNombre || 'Usted')
+              : (profile?.asistenteNombre || 'Asistente')
+          }
+          tipo={escuchando ? 'usuario' : 'asistente'}
           fontSize="grande"
         />
 
@@ -294,8 +306,10 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
           <motion.button
             onTouchStart={alPresionarMicro}
             onTouchEnd={alSoltarMicro}
+            onTouchCancel={alSoltarMicro}
             onMouseDown={alPresionarMicro}
             onMouseUp={alSoltarMicro}
+            onMouseLeave={alSoltarMicro}
             onContextMenu={(e) => e.preventDefault()}
             animate={{ scale: estaHablando || escuchando || estaProcesando ? 1.1 : 1 }}
             className={`relative w-40 h-40 rounded-full flex items-center justify-center shadow-2xl z-10 transition-all duration-500 bg-white border-8 focus:outline-none focus:ring-4 focus:ring-blue-300 ${

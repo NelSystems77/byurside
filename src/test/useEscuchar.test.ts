@@ -12,6 +12,7 @@ describe('useEscuchar — Speech Recognition', () => {
     const { result } = renderHook(() => useEscuchar());
     expect(result.current.escuchando).toBe(false);
     expect(result.current.transcripcion).toBe('');
+    expect(result.current.transcripcionInterim).toBe('');
     expect(result.current.error).toBeNull();
   });
 
