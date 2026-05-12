@@ -19,7 +19,7 @@ interface DashboardProps {
 
 export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: DashboardProps) => {
   const { profile, loading } = useAuth();
-  const { hablar, estaHablando, vocesListas } = useVoz();
+  const { hablar, unlock, estaHablando, vocesListas } = useVoz();
   const { escuchando, transcripcion, transcripcionInterim, error: errorVoz, modoOffline, iniciarEscucha, detenerEscucha, reintentarEscucha, simularVoz, limpiarTranscripcion } = useEscuchar();
   const { descontarDosis } = useSalud();
   const { procesarComando } = useIA();
@@ -89,6 +89,7 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
   const alPresionarMicro = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     if (estaHablando || procesandoRef.current) return;
+    unlock(); // Unlock iOS audio context on first user gesture so hablar() works async
     iniciarEscucha();
   };
 

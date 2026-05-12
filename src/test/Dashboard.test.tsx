@@ -21,6 +21,7 @@ vi.mock('../context/AuthContext', () => ({
 vi.mock('../hooks/useVoz', () => ({
   useVoz: vi.fn(() => ({
     hablar: vi.fn(),
+    unlock: vi.fn(),
     estaHablando: false,
     vocesListas: true,
   })),
