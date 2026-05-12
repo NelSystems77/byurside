@@ -2,8 +2,10 @@
 
 **Project Type:** Progressive Web App (PWA) | AI-Powered Senior Care Assistant  
 **Version:** 0.0.0 | **Status:** Active Development  
-**Deploy Target:** Firebase Hosting  
-**Last Updated:** May 11, 2026 (v2.4)
+**Deploy Target:** Vercel (producción) + Firebase Hosting (alternativo)  
+**Repositorio:** https://github.com/NelSystems77/byurside.git  
+**URL Producción:** https://byurside.vercel.app/  
+**Last Updated:** May 11, 2026 (v2.5)
 
 ---
 
@@ -104,6 +106,7 @@ byurside-app/
 ├── tsconfig.json / tsconfig.app.json / tsconfig.node.json
 ├── tailwind.config.js / postcss.config.js / eslint.config.js
 ├── firebase.json                    # Hosting + rewrite rules (SPA)
+├── vercel.json                      # Vercel deploy config (build, outputDir, rewrites SPA)
 ├── index.html
 │
 ├── functions/
@@ -442,6 +445,7 @@ Usar este patrón en TODOS los hooks y componentes. Nunca hardcodear `"paciente_
 | StrictMode duplica efectos Firebase | `main.tsx` | Eliminado `<StrictMode>` — en apps Firebase causa doble registro de listeners y seeding duplicado |
 | "Don Don Carlos" — honorífico duplicado | `AuthContext.tsx`, `seedDev.ts` | `pacienteNombre` tenía "Don Carlos" pero `honorifico` ya era "Don". Corregido a `pacienteNombre: "Carlos"` |
 | Textos < 10px — ilegibles para adultos mayores | `Dashboard.tsx`, `RoleSelector.tsx`, `CaregiverDashboard.tsx`, `CaregiverMeds.tsx` | Elevados a mínimo `text-xs` (12px); instrucciones del paciente a `text-sm` (14px); etiquetas de tab nav de 8px a 11px |
+| `setMapReady is not defined` — crash al abrir tab Mapa | `CaregiverMap.tsx` | `whenReady={() => setMapReady(true)}` en `MapContainer` usaba variable inexistente. Eliminada la prop — `MapController` ya maneja `invalidateSize()` |
 
 ---
 
@@ -488,19 +492,30 @@ Nunca asumir que Gemini responde. La cadena **Gemini → Groq → OpenAI → Dev
 
 ---
 
-## 11. CONFIGURACIÓN FIREBASE
+## 11. CONFIGURACIÓN FIREBASE & DEPLOY
 
+### Firebase
 ```
 Project ID:         byurside-f671b
 Auth Domain:        byurside-f671b.firebaseapp.com
 Storage Bucket:     byurside-f671b.firebasestorage.app
 Messaging Sender:   357066030641
 App ID:             1:357066030641:web:9110b0dae3d80baec0df10
-Deploy URL:         https://byurside-f671b.firebaseapp.com
+Firebase URL:       https://byurside-f671b.firebaseapp.com
 ```
 
 **Rewrite rule (SPA):** Todas las rutas → `index.html`  
 **Offline:** `persistentLocalCache` + `persistentMultipleTabManager`
+
+### Vercel (deploy principal)
+```
+Repositorio:        https://github.com/NelSystems77/byurside.git
+URL Producción:     https://byurside.vercel.app/
+Build Command:      npm run build
+Output Directory:   dist/
+SPA Rewrites:       /(.*) → /index.html   (vercel.json)
+```
+Las variables de entorno (`VITE_GEMINI_API_KEY`, etc.) deben configurarse en el panel de Vercel → Settings → Environment Variables, NO en archivos `.env` commiteados.
 
 ---
 
@@ -532,7 +547,12 @@ npm test             # Ejecutar todos los tests una vez (83 tests)
 npm run test:watch   # Modo watch para desarrollo TDD
 npm run test:coverage  # Reporte de cobertura en dist/coverage/
 
-firebase deploy      # Deploy a producción
+firebase deploy      # Deploy alternativo a Firebase Hosting
+
+# Deploy en Vercel (automático via GitHub)
+# Push a main → Vercel detecta el cambio → build + deploy automático
+# URL: https://byurside.vercel.app/
+git push origin main
 ```
 
 **Testing manual:**
@@ -579,7 +599,8 @@ firebase deploy      # Deploy a producción
 
 ---
 
-**Document Version:** 2.4 | **Updated:** May 11, 2026  
+**Document Version:** 2.5 | **Updated:** May 11, 2026  
+**Cambios v2.5:** Repositorio subido a GitHub (https://github.com/NelSystems77/byurside.git). Deploy principal migrado a Vercel (https://byurside.vercel.app/) con `vercel.json` (buildCommand, outputDirectory, SPA rewrites). Variables de entorno ahora deben configurarse en el panel de Vercel. `vercel.json` añadido a §3 (estructura). §11 actualizado con sección Vercel. §13 actualizado: `git push origin main` como comando de deploy principal (Vercel CI/CD automático).  
 **Cambios v2.4:** Suite QA completa implementada con Vitest + React Testing Library (83 tests, 9 archivos, 100% passing). Dependencias añadidas: `vitest`, `@vitest/coverage-v8`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom`. Configuración de tests en `vite.config.ts` (`test.environment: jsdom`, `setupFiles`). Archivos de prueba en `src/test/`: setup.ts (mocks globales), useMemoria, useVoz, useEscuchar, useAgua, useSalud, useIA, RoleSelector, VisualBridge, Dashboard. Scripts añadidos al `package.json`: `test`, `test:watch`, `test:coverage`. Regla §0 de mantenimiento de CLAUDE.md añadida.  
 **Cambios v2.3:** Bug "Don Don Carlos" corregido (`pacienteNombre` sin honorífico en AuthContext + seedDev), textos mínimos elevados para accesibilidad adulto mayor (text-[8px]/[9px] → text-xs/text-sm en Dashboard, RoleSelector, CaregiverDashboard, CaregiverMeds), regla documentada en §8.  
 **Cambios v2.2:** Fallback de IA reordenado (Groq antes de OpenAI), GEMINI_MODELS reducido a 2 modelos 2.0, eliminado StrictMode, seeding protegido contra duplicados, cuotas de API documentadas.  

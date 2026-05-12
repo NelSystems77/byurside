@@ -122,12 +122,11 @@ export const CaregiverMap = () => {
 
       {/* CONTENEDOR DEL MAPA */}
       <div className="flex-1 z-0 relative">
-        <MapContainer 
-          center={[ubicacion.lat, ubicacion.lng]} 
-          zoom={17} 
+        <MapContainer
+          center={[ubicacion.lat, ubicacion.lng]}
+          zoom={17}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
-          whenReady={() => setMapReady(true)}
         >
           <TileLayer 
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
