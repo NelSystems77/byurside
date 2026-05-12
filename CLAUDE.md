@@ -5,7 +5,7 @@
 **Deploy Target:** Vercel (producción) + Firebase Hosting (alternativo)  
 **Repositorio:** https://github.com/NelSystems77/byurside.git  
 **URL Producción:** https://byurside.vercel.app/  
-**Last Updated:** May 11, 2026 (v2.5)
+**Last Updated:** May 11, 2026 (v2.6)
 
 ---
 
@@ -599,7 +599,8 @@ git push origin main
 
 ---
 
-**Document Version:** 2.5 | **Updated:** May 11, 2026  
+**Document Version:** 2.6 | **Updated:** May 11, 2026  
+**Cambios v2.6:** Bug `setMapReady is not defined` corregido en `CaregiverMap.tsx` — eliminada prop `whenReady` que referenciaba variable inexistente; `MapController` ya maneja `invalidateSize()`. Bug documentado en §9.  
 **Cambios v2.5:** Repositorio subido a GitHub (https://github.com/NelSystems77/byurside.git). Deploy principal migrado a Vercel (https://byurside.vercel.app/) con `vercel.json` (buildCommand, outputDirectory, SPA rewrites). Variables de entorno ahora deben configurarse en el panel de Vercel. `vercel.json` añadido a §3 (estructura). §11 actualizado con sección Vercel. §13 actualizado: `git push origin main` como comando de deploy principal (Vercel CI/CD automático).  
 **Cambios v2.4:** Suite QA completa implementada con Vitest + React Testing Library (83 tests, 9 archivos, 100% passing). Dependencias añadidas: `vitest`, `@vitest/coverage-v8`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom`. Configuración de tests en `vite.config.ts` (`test.environment: jsdom`, `setupFiles`). Archivos de prueba en `src/test/`: setup.ts (mocks globales), useMemoria, useVoz, useEscuchar, useAgua, useSalud, useIA, RoleSelector, VisualBridge, Dashboard. Scripts añadidos al `package.json`: `test`, `test:watch`, `test:coverage`. Regla §0 de mantenimiento de CLAUDE.md añadida.  
 **Cambios v2.3:** Bug "Don Don Carlos" corregido (`pacienteNombre` sin honorífico en AuthContext + seedDev), textos mínimos elevados para accesibilidad adulto mayor (text-[8px]/[9px] → text-xs/text-sm en Dashboard, RoleSelector, CaregiverDashboard, CaregiverMeds), regla documentada en §8.  
