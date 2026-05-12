@@ -446,6 +446,7 @@ Usar este patrón en TODOS los hooks y componentes. Nunca hardcodear `"paciente_
 | "Don Don Carlos" — honorífico duplicado | `AuthContext.tsx`, `seedDev.ts` | `pacienteNombre` tenía "Don Carlos" pero `honorifico` ya era "Don". Corregido a `pacienteNombre: "Carlos"` |
 | Textos < 10px — ilegibles para adultos mayores | `Dashboard.tsx`, `RoleSelector.tsx`, `CaregiverDashboard.tsx`, `CaregiverMeds.tsx` | Elevados a mínimo `text-xs` (12px); instrucciones del paciente a `text-sm` (14px); etiquetas de tab nav de 8px a 11px |
 | `setMapReady is not defined` — crash al abrir tab Mapa | `CaregiverMap.tsx` | `whenReady={() => setMapReady(true)}` en `MapContainer` usaba variable inexistente. Eliminada la prop — `MapController` ya maneja `invalidateSize()` |
+| Error `network` en Edge — voz no funciona (Don Carlos no puede hablar) | `useEscuchar.ts` | Edge usa ASR de Microsoft que no soporta `es-CR` → lanza `network`. Fix: `getSpeechLang()` retorna `es-ES` en Edge/Safari. Además: (1) instancia se recrea tras cada error (`recognitionRef = null` en `onerror`), (2) auto-retry hasta 2 veces en error `network` transitorio vía `autoRetry` state + `useEffect` con 700ms. |
 
 ---
 
@@ -599,7 +600,8 @@ git push origin main
 
 ---
 
-**Document Version:** 2.6 | **Updated:** May 11, 2026  
+**Document Version:** 2.7 | **Updated:** May 11, 2026  
+**Cambios v2.7:** Bug de voz corregido en `useEscuchar.ts` — Edge lanzaba `error network` porque Microsoft ASR no soporta `es-CR`. Fix: `getSpeechLang()` retorna `es-ES` en Edge/Safari. También: instancia de Recognition siempre se recrea tras error (eliminando instancias rotas), y auto-retry hasta 2 veces en error de red transitorio via `autoRetry` state + `useEffect`.  
 **Cambios v2.6:** Bug `setMapReady is not defined` corregido en `CaregiverMap.tsx` — eliminada prop `whenReady` que referenciaba variable inexistente; `MapController` ya maneja `invalidateSize()`. Bug documentado en §9.  
 **Cambios v2.5:** Repositorio subido a GitHub (https://github.com/NelSystems77/byurside.git). Deploy principal migrado a Vercel (https://byurside.vercel.app/) con `vercel.json` (buildCommand, outputDirectory, SPA rewrites). Variables de entorno ahora deben configurarse en el panel de Vercel. `vercel.json` añadido a §3 (estructura). §11 actualizado con sección Vercel. §13 actualizado: `git push origin main` como comando de deploy principal (Vercel CI/CD automático).  
 **Cambios v2.4:** Suite QA completa implementada con Vitest + React Testing Library (83 tests, 9 archivos, 100% passing). Dependencias añadidas: `vitest`, `@vitest/coverage-v8`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom`. Configuración de tests en `vite.config.ts` (`test.environment: jsdom`, `setupFiles`). Archivos de prueba en `src/test/`: setup.ts (mocks globales), useMemoria, useVoz, useEscuchar, useAgua, useSalud, useIA, RoleSelector, VisualBridge, Dashboard. Scripts añadidos al `package.json`: `test`, `test:watch`, `test:coverage`. Regla §0 de mantenimiento de CLAUDE.md añadida.  
