@@ -254,8 +254,14 @@ const pacienteId = profile?.rol === 'paciente' ? profile.uid : profile?.paciente
 ```
 **Acciones programadas:**
 - `08:00` — Saludo espiritual con oferta de lectura bíblica
-- `09:00, 15:00, 20:00` — Chequeo emocional
-- A la hora de cada medicamento — Recordatorio + protocolo emergencia (5 min timeout)
+- `09:00, 15:00, 20:00` — Chequeo emocional → `setEsperandoConfirmacion({ tipo: 'sentimiento' })`
+- A la hora de cada medicamento — Recordatorio + protocolo emergencia (5 min timeout) → `setEsperandoConfirmacion({ tipo: 'pastilla' })`
+
+**Optimizaciones implementadas:**
+- Meds se cargan una vez al montar en `medsCache` ref (no query Firestore en cada tick)
+- `activeTimeouts` ref acumula IDs de `setTimeout`; cleanup al desmontar evita memory leaks
+- `break` en el loop de meds evita solapamiento TTS si hay varios a la misma hora
+- Chequeo emocional hace `return` para no procesar meds en el mismo tick
 
 **IMPORTANTE:** El `setEsperandoConfirmacion` que recibe es el de App.tsx, NO crear uno local.
 
@@ -468,6 +474,11 @@ Usar este patrón en TODOS los hooks y componentes. Nunca hardcodear `"paciente_
 | Loop infinito de reintentos en Edge — "(1/2)…" se repetía indefinidamente | `useEscuchar.ts` | `onstart` reseteaba `retryCountRef.current = 0` en cada intento, por lo que el contador nunca llegaba a MAX_RETRIES. Fix: (1) eliminar el reset de `onstart`; (2) `iniciarEscucha` (llamada por el usuario) sí resetea el contador; (3) nueva función `_iniciarRetry` para auto-retries que NO resetea el contador. |
 | iOS — al soltar el botón no se enviaba la transcripción al asistente | `useEscuchar.ts` | iOS Safari frecuentemente omite el evento `onresult` con `isFinal:true` al llamar `.stop()`. Fix: `interimRef` rastrea el último texto interim; `onend` lo promueve a `transcripcion` final si no llegó resultado final. `detenerEscucha` ya no limpia `interimRef` para que `onend` pueda usarlo. |
 | iOS — voz del asistente (TTS) silenciosa | `useVoz.ts`, `Dashboard.tsx` | iOS Safari bloquea `speechSynthesis.speak()` desde contexto asíncrono. Fix: nueva función `unlock()` que hace una llamada silenciosa a `speak()` en el primer user-gesture (`alPresionarMicro`). `hablar()` usa `setTimeout(speak, 50)` en iOS para el gap post-`cancel()`. Fallback de 1500ms para `vocesListas` porque iOS no dispara `onvoiceschanged`. |
+| Chequeo emocional dejaba Dashboard en rojo permanente | `ProactiveHeart.tsx`, `Dashboard.tsx` | `setEsperandoConfirmacion({ tipo: 'sentimiento' })` se activaba pero Dashboard solo manejaba `tipo === 'pastilla'`, dejando el fondo rojo hasta recargar. Fix: bloque `if (tipo === 'sentimiento')` en `procesarEntradaVoz` llama `procesarComando` y luego `setEsperandoConfirmacion(null)`. |
+| Firestore query cada 30 segundos en ProactiveHeart | `ProactiveHeart.tsx` | `obtenerMedicinasConfiguradas()` se llamaba en cada tick del `setInterval` (30s → ~2,880 reads/día). Fix: meds se cargan una vez en `useEffect` al montar (cuando `pacienteId` esté disponible) y se cachean en `medsCache` ref. El intervalo usa el caché sin tocar Firestore. |
+| Memory leak — `setTimeout` del protocolo emergencia sin cleanup | `ProactiveHeart.tsx` | El `setTimeout` de 5 minutos no tenía referencia para cancelarse al desmontar el componente. Fix: `activeTimeouts` ref (Set) acumula los IDs; `useEffect` de cleanup los cancela todos al desmontar. |
+| Meds múltiples a la misma hora solapaban TTS | `ProactiveHeart.tsx` | El `for` procesaba todos los meds sin `break`, llamando `hablar()` y `setEsperandoConfirmacion()` varias veces en la misma iteración. Fix: `break` tras el primer med que coincide con la hora actual — evita que Danay hable encima de sí misma y que la confirmación se sobreescriba. |
+| `usePushNotifications` escribía en colección incorrecta | `usePushNotifications.ts` | FCM tokens se guardaban en `users/{id}/familia/...` (inglés) en lugar de `usuarios/{id}/familia/...`. Fix: corregida la ruta a `usuarios/`. |
 
 ---
 
@@ -621,7 +632,8 @@ git push origin main
 
 ---
 
-**Document Version:** 2.10 | **Updated:** May 12, 2026  
+**Document Version:** 2.11 | **Updated:** May 12, 2026  
+**Cambios v2.11:** Seis bugs en el sistema de recordatorios y notificaciones corregidos: (1) `tipo: 'sentimiento'` en ProactiveHeart nunca se limpiaba — Dashboard quedaba con fondo rojo permanente; añadido bloque `if (tipo === 'sentimiento')` que llama `procesarComando` y luego `setEsperandoConfirmacion(null)`. (2) Protocolo de emergencia usaba `fecha: serverTimestamp()` en lugar de `createdAt`, rompiendo `orderBy('createdAt')` del CaregiverDashboard. (3) `obtenerMedicinasConfiguradas()` se llamaba en cada tick de 30s (~2,880 reads/día); ahora carga una vez al montar en `medsCache` ref. (4) `setTimeout` del protocolo sin cleanup al desmontar — añadido `activeTimeouts` ref + `useEffect` de cleanup. (5) Loop de meds sin `break` solapaba TTS si había varios meds a la misma hora. (6) `usePushNotifications` escribía FCM tokens en colección `users/` (inglés) en vez de `usuarios/`.  
 **Cambios v2.10:** SOS con voz implementado en `Dashboard.tsx` — botón SOS ahora llama `alPresionarSOS()`: desbloquea audio iOS (`unlock()`), abre el modal y arranca `iniciarEscucha()` con `modoSOSRef = true`. Cuando llega la transcripción, en vez de ir a la IA se escribe directamente a `usuarios/{pacienteId}/alerts` con `tipo: 'emergencia'`, `nivel: 'critico'` y el texto del paciente. Danay confirma por voz. Si el micrófono falla (offline, permiso), `modoSOS` se resetea automáticamente via `useEffect` que observa `errorVoz`. El modal muestra un indicador animado de micrófono mientras escucha, spinner mientras envía, y siempre mantiene visible el botón de llamada telefónica. El listening del botón micrófono normal no cambió: sigue siendo estrictamente hold-to-talk, sin polling ni escucha en background.  
 **Cambios v2.9:** Tres bugs de voz corregidos: (1) Loop infinito en Edge — `onstart` reseteaba `retryCountRef` causando que los reintentos nunca acumularan; separada función `_iniciarRetry` para auto-retries vs `iniciarEscucha` para starts frescos del usuario. (2) iOS — al soltar el botón la transcripción no llegaba al asistente porque iOS Safari omite `onresult` final después de `.stop()`; `interimRef` preserva el texto interim y `onend` lo promueve a final. (3) iOS — TTS silencioso porque `speak()` llamado desde contexto async es bloqueado; nueva función `unlock()` en `useVoz` llamada desde `alPresionarMicro` (user-gesture), más delay de 50ms post-`cancel()` en iOS y fallback timeout de 1500ms para `vocesListas`. 83/83 tests pasando.  
 **Cambios v2.8:** Fix crítico de voz multiplataforma en `useEscuchar.ts` — tres bugs combinados que causaban que el micrófono no funcionara en iOS, Android ni Windows: (1) `getSpeechLang()` ahora retorna `es-ES` para iOS y Android (Apple/Google ASR rechazan `es-CR` con error `network`); (2) `iniciarEscucha` convertida a función síncrona — iOS Safari requiere que `.start()` se llame en el mismo call stack del user-gesture handler (el `await verificarConexion()` anterior rompía ese contexto); (3) `detenerEscucha` reescrita sin dependencia en `escuchando` state para evitar stale closure — antes, si el usuario soltaba el botón antes de que `onstart` disparara, `.stop()` nunca se llamaba. También: `interimResults: true` + nuevo estado `transcripcionInterim` para mostrar texto en vivo durante la escucha. Dashboard actualizado: VisualBridge muestra texto interim durante escucha, `onTouchCancel`/`onMouseLeave` añadidos al botón micrófono. 83/83 tests pasando.  

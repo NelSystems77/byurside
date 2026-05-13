@@ -167,6 +167,15 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
             return;
           }
         }
+
+        // Chequeo emocional: procesarComando registra el sentimiento; limpiamos la confirmación
+        if (esperandoConfirmacion?.tipo === 'sentimiento') {
+          const respuesta = await procesarComando(textoAProcesar);
+          emitirRespuesta(respuesta);
+          setEsperandoConfirmacion(null);
+          return;
+        }
+
         const respuesta = await procesarComando(textoAProcesar);
         emitirRespuesta(respuesta);
       } catch {

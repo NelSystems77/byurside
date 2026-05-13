@@ -15,7 +15,7 @@ export const usePushNotifications = (userId: string, familiarId: string) => {
 
         if (token) {
           // Guardamos el token en el documento del familiar para que el sistema sepa a dónde enviar
-          const familiarRef = doc(db, "users", userId, "familia", familiarId);
+          const familiarRef = doc(db, "usuarios", userId, "familia", familiarId);
           await updateDoc(familiarRef, {
             fcmTokens: arrayUnion(token),
             notificacionesActivas: true
