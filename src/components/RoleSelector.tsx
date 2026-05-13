@@ -34,7 +34,7 @@ export const RoleSelector = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-4xl font-black text-white tracking-tighter uppercase mb-1"
+          className="text-3xl sm:text-4xl font-black text-white tracking-tighter uppercase mb-1"
         >
           ByUrSide
         </motion.h1>
@@ -42,7 +42,7 @@ export const RoleSelector = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-slate-400 text-sm font-bold uppercase tracking-[0.2em] mb-12"
+          className="text-slate-400 text-xs sm:text-sm font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] mb-8 sm:mb-12"
         >
           Cuidado inteligente · Siempre contigo
         </motion.p>
@@ -64,15 +64,15 @@ export const RoleSelector = () => {
           transition={{ delay: 0.7, type: 'spring', stiffness: 150 }}
           whileTap={{ scale: 0.97 }}
           onClick={() => navigate('/paciente')}
-          className="w-full mb-4 bg-white text-slate-900 rounded-[28px] p-6 flex items-center gap-5 shadow-2xl shadow-black/30 hover:bg-blue-50 transition-colors group"
+          className="w-full mb-4 bg-white text-slate-900 rounded-[20px] sm:rounded-[28px] p-4 sm:p-6 flex items-center gap-4 sm:gap-5 shadow-2xl shadow-black/30 hover:bg-blue-50 transition-colors group"
           aria-label="Entrar como paciente"
         >
-          <div className="w-14 h-14 bg-blue-100 group-hover:bg-blue-200 rounded-2xl flex items-center justify-center shrink-0 transition-colors">
-            <User className="text-blue-600" size={28} />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 group-hover:bg-blue-200 rounded-2xl flex items-center justify-center shrink-0 transition-colors">
+            <User className="text-blue-600 w-6 h-6 sm:w-7 sm:h-7" />
           </div>
           <div className="text-left">
-            <p className="font-black text-xl text-slate-900 tracking-tight">Soy el Paciente</p>
-            <p className="text-slate-500 text-sm font-medium mt-0.5">
+            <p className="font-black text-lg sm:text-xl text-slate-900 tracking-tight">Soy el Paciente</p>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mt-0.5">
               Hablar con Danay · Recordatorios · Emergencias
             </p>
           </div>
@@ -85,15 +85,15 @@ export const RoleSelector = () => {
           transition={{ delay: 0.8, type: 'spring', stiffness: 150 }}
           whileTap={{ scale: 0.97 }}
           onClick={() => navigate('/familiar')}
-          className="w-full bg-slate-700 text-white rounded-[28px] p-6 flex items-center gap-5 shadow-2xl shadow-black/30 hover:bg-slate-600 transition-colors border border-slate-600 group"
+          className="w-full bg-slate-700 text-white rounded-[20px] sm:rounded-[28px] p-4 sm:p-6 flex items-center gap-4 sm:gap-5 shadow-2xl shadow-black/30 hover:bg-slate-600 transition-colors border border-slate-600 group"
           aria-label="Entrar como cuidador"
         >
-          <div className="w-14 h-14 bg-white/10 group-hover:bg-white/20 rounded-2xl flex items-center justify-center shrink-0 transition-colors">
-            <Users className="text-purple-300" size={28} />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/10 group-hover:bg-white/20 rounded-2xl flex items-center justify-center shrink-0 transition-colors">
+            <Users className="text-purple-300 w-6 h-6 sm:w-7 sm:h-7" />
           </div>
           <div className="text-left">
-            <p className="font-black text-xl text-white tracking-tight">Soy Cuidador</p>
-            <p className="text-slate-400 text-sm font-medium mt-0.5">
+            <p className="font-black text-lg sm:text-xl text-white tracking-tight">Soy Cuidador</p>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mt-0.5">
               Panel de control · Alertas · Medicamentos
             </p>
           </div>
@@ -104,7 +104,7 @@ export const RoleSelector = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.0 }}
-          className="mt-10 flex items-center gap-2 text-slate-500"
+          className="mt-6 sm:mt-10 flex items-center gap-2 text-slate-500"
         >
           <ShieldCheck size={14} />
           <p className="text-xs font-bold uppercase tracking-widest">

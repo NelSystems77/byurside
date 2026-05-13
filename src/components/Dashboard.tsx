@@ -207,11 +207,11 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
     <div className={`h-screen w-full flex flex-col transition-colors duration-1000 overflow-hidden ${bgColor}`}>
 
       {/* --- INDICADOR DE CONECTIVIDAD DE VOZ --- */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-3 right-3 sm:top-4 sm:right-4 z-50">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium shadow-lg cursor-help ${
+          className={`flex items-center gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 rounded-full text-xs sm:text-sm font-medium shadow-lg cursor-help ${
             modoOffline
               ? 'bg-amber-100 text-amber-800 border border-amber-200'
               : 'bg-green-100 text-green-800 border border-green-200'
@@ -237,7 +237,7 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
       </AnimatePresence>
 
       {/* --- HEADER --- */}
-      <header className="w-full flex items-center justify-between px-6 pt-10 pb-4 shrink-0">
+      <header className="w-full flex items-center justify-between px-4 sm:px-6 pt-6 sm:pt-10 pb-3 sm:pb-4 shrink-0">
         <button
           onClick={() => setMostrarAgua(v => !v)}
           className="w-12 h-12 bg-blue-50 hover:bg-blue-100 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-colors"
@@ -273,7 +273,7 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden shrink-0"
           >
-            <div className="px-6 pb-4">
+            <div className="px-4 sm:px-6 pb-3 sm:pb-4">
               <div className="bg-white rounded-[24px] p-4 shadow-sm border border-blue-100">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -320,129 +320,135 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
       </AnimatePresence>
 
       {/* --- ÁREA PRINCIPAL --- */}
-      <main className="flex-1 w-full flex flex-col items-center justify-center p-6 space-y-6 relative overflow-hidden">
-        <VisualBridge
-          mensaje={
-            escuchando && transcripcionInterim
-              ? transcripcionInterim
-              : escuchando
-              ? 'Escuchando...'
-              : estaProcesando
-              ? 'Pensando...'
-              : ultimoMensajeAsistente
-          }
-          quienHabla={
-            escuchando
-              ? (profile?.pacienteNombre || 'Usted')
-              : (profile?.asistenteNombre || 'Asistente')
-          }
-          tipo={escuchando ? 'usuario' : 'asistente'}
-          fontSize="grande"
-        />
+      <main className="flex-1 w-full overflow-y-auto min-h-0 p-4 sm:p-6">
+        {/* Contenedor centrado verticalmente — cuando hay poco contenido queda al centro;
+            cuando hay mucho, se puede hacer scroll */}
+        <div className="flex flex-col items-center gap-4 sm:gap-6 w-full max-w-2xl mx-auto min-h-full justify-center">
 
-        <div className="relative py-4 shrink-0">
-          <AnimatePresence>
-            {(escuchando || estaProcesando || esperandoConfirmacion) && (
+          <VisualBridge
+            mensaje={
+              escuchando && transcripcionInterim
+                ? transcripcionInterim
+                : escuchando
+                ? 'Escuchando...'
+                : estaProcesando
+                ? 'Pensando...'
+                : ultimoMensajeAsistente
+            }
+            quienHabla={
+              escuchando
+                ? (profile?.pacienteNombre || 'Usted')
+                : (profile?.asistenteNombre || 'Asistente')
+            }
+            tipo={escuchando ? 'usuario' : 'asistente'}
+            fontSize="grande"
+          />
+
+          <div className="relative py-2 sm:py-4 shrink-0">
+            <AnimatePresence>
+              {(escuchando || estaProcesando || esperandoConfirmacion) && (
+                <motion.div
+                  initial={{ scale: 1, opacity: 0.5 }}
+                  animate={{ scale: 1.6, opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                  className={`absolute inset-0 rounded-full ${
+                    !online ? 'bg-amber-300' : estaProcesando ? 'bg-blue-300' : esperandoConfirmacion ? 'bg-red-400' : 'bg-blue-400'
+                  }`}
+                />
+              )}
+            </AnimatePresence>
+
+            {modoOffline && (
               <motion.div
-                initial={{ scale: 1, opacity: 0.5 }}
-                animate={{ scale: 1.6, opacity: 0 }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-                className={`absolute inset-0 rounded-full ${
-                  !online ? 'bg-amber-300' : estaProcesando ? 'bg-blue-300' : esperandoConfirmacion ? 'bg-red-400' : 'bg-blue-400'
-                }`}
-              />
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg"
+              >
+                Offline
+              </motion.div>
             )}
-          </AnimatePresence>
 
-          {modoOffline && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="absolute -top-2 -right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg"
+            <motion.button
+              onTouchStart={alPresionarMicro}
+              onTouchEnd={alSoltarMicro}
+              onTouchCancel={alSoltarMicro}
+              onMouseDown={alPresionarMicro}
+              onMouseUp={alSoltarMicro}
+              onMouseLeave={alSoltarMicro}
+              onContextMenu={(e) => e.preventDefault()}
+              animate={{ scale: estaHablando || escuchando || estaProcesando ? 1.1 : 1 }}
+              className={`relative w-32 h-32 sm:w-40 sm:h-40 rounded-full flex items-center justify-center shadow-2xl z-10 transition-all duration-500 bg-white border-4 sm:border-8 focus:outline-none focus:ring-4 focus:ring-blue-300 ${
+                !online
+                  ? 'border-amber-200'
+                  : estaProcesando
+                  ? 'border-blue-100'
+                  : esperandoConfirmacion
+                  ? 'border-red-200'
+                  : 'border-slate-100'
+              }`}
+              aria-label={estaHablando ? 'Hablando' : estaProcesando ? 'Procesando' : escuchando ? 'Escuchando, suelte para detener' : 'Presione para hablar'}
+              disabled={estaHablando}
             >
-              Offline
+              {estaHablando ? (
+                <Volume2 className="w-9 h-9 sm:w-12 sm:h-12 text-emerald-500 animate-pulse" />
+              ) : estaProcesando ? (
+                <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-4 border-blue-600" />
+              ) : (
+                <Mic className={`w-9 h-9 sm:w-12 sm:h-12 ${!online ? 'text-amber-500' : escuchando ? 'text-blue-600 animate-pulse' : 'text-slate-300'}`} />
+              )}
+            </motion.button>
+          </div>
+
+          {/* --- ERROR DE VOZ --- */}
+          {errorVoz && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center w-full max-w-sm mx-auto"
+              role="alert"
+              aria-live="polite"
+            >
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <AlertCircle size={16} />
+                <span className="font-medium">
+                  {modoOffline && errorVoz.includes('offline')
+                    ? 'Modo offline — Usa el campo de texto.'
+                    : errorVoz}
+                </span>
+              </div>
+              {modoOffline && import.meta.env.DEV && (
+                <div className="flex gap-2 justify-center">
+                  <button onClick={() => simularVoz('Hola Danay, ¿cómo estás?')}
+                    className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors">
+                    🎭 Simular "Hola"
+                  </button>
+                  <button onClick={() => simularVoz('Tomé un vaso de agua')}
+                    className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors">
+                    💧 Simular "Agua"
+                  </button>
+                </div>
+              )}
+              {errorVoz.includes('conexión') && !modoOffline && (
+                <button onClick={reintentarEscucha}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-colors">
+                  <RotateCcw size={12} />
+                  Reintentar
+                </button>
+              )}
             </motion.div>
           )}
 
-          <motion.button
-            onTouchStart={alPresionarMicro}
-            onTouchEnd={alSoltarMicro}
-            onTouchCancel={alSoltarMicro}
-            onMouseDown={alPresionarMicro}
-            onMouseUp={alSoltarMicro}
-            onMouseLeave={alSoltarMicro}
-            onContextMenu={(e) => e.preventDefault()}
-            animate={{ scale: estaHablando || escuchando || estaProcesando ? 1.1 : 1 }}
-            className={`relative w-40 h-40 rounded-full flex items-center justify-center shadow-2xl z-10 transition-all duration-500 bg-white border-8 focus:outline-none focus:ring-4 focus:ring-blue-300 ${
-              !online
-                ? 'border-amber-200'
-                : estaProcesando
-                ? 'border-blue-100'
-                : esperandoConfirmacion
-                ? 'border-red-200'
-                : 'border-slate-100'
-            }`}
-            aria-label={estaHablando ? 'Hablando' : estaProcesando ? 'Procesando' : escuchando ? 'Escuchando, suelte para detener' : 'Presione para hablar'}
-            disabled={estaHablando}
-          >
-            {estaHablando ? (
-              <Volume2 size={50} className="text-emerald-500 animate-pulse" />
-            ) : estaProcesando ? (
-              <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-blue-600" />
-            ) : (
-              <Mic size={50} className={!online ? 'text-amber-500' : escuchando ? 'text-blue-600 animate-pulse' : 'text-slate-300'} />
-            )}
-          </motion.button>
         </div>
-
-        {/* --- ERROR DE VOZ --- */}
-        {errorVoz && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center max-w-sm mx-auto"
-            role="alert"
-            aria-live="polite"
-          >
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <AlertCircle size={16} />
-              <span className="font-medium">
-                {modoOffline && errorVoz.includes('offline')
-                  ? 'Modo offline — Usa el campo de texto.'
-                  : errorVoz}
-              </span>
-            </div>
-            {modoOffline && import.meta.env.DEV && (
-              <div className="flex gap-2 justify-center">
-                <button onClick={() => simularVoz('Hola Danay, ¿cómo estás?')}
-                  className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors">
-                  🎭 Simular "Hola"
-                </button>
-                <button onClick={() => simularVoz('Tomé un vaso de agua')}
-                  className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors">
-                  💧 Simular "Agua"
-                </button>
-              </div>
-            )}
-            {errorVoz.includes('conexión') && !modoOffline && (
-              <button onClick={reintentarEscucha}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-medium transition-colors">
-                <RotateCcw size={12} />
-                Reintentar
-              </button>
-            )}
-          </motion.div>
-        )}
       </main>
 
       {/* --- TECLADO --- */}
-      <footer className="px-6 pb-12 w-full max-w-lg mx-auto shrink-0">
+      <footer className="px-4 sm:px-6 pb-8 sm:pb-12 w-full max-w-lg mx-auto shrink-0">
         <div className="relative group">
           <input
             type="text"
             placeholder={`Escríbale algo a ${profile?.asistenteNombre}...`}
-            className="w-full bg-white border-2 border-slate-100 rounded-2xl px-6 py-4 pr-14 text-slate-700 font-medium shadow-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all outline-none text-xl"
+            className="w-full bg-white border-2 border-slate-100 rounded-2xl px-4 sm:px-6 py-3 sm:py-4 pr-12 sm:pr-14 text-slate-700 font-medium shadow-sm focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all outline-none text-base sm:text-xl"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 const input = e.target as HTMLInputElement;
@@ -479,10 +485,10 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
       <AnimatePresence>
         {mostrarFicha && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[4000] bg-slate-900/90 backdrop-blur-md p-6 flex items-center justify-center">
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white w-full max-w-lg rounded-[40px] p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black text-red-600 uppercase tracking-tighter">Ficha SOS</h2>
+            className="fixed inset-0 z-[4000] bg-slate-900/90 backdrop-blur-md p-4 sm:p-6 flex items-center justify-center">
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white w-full max-w-lg rounded-[28px] sm:rounded-[40px] p-5 sm:p-8">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-black text-red-600 uppercase tracking-tighter">Ficha SOS</h2>
                 <button onClick={cerrarModalSOS} className="p-2 bg-slate-100 rounded-full"><X /></button>
               </div>
               <div className="space-y-4">
@@ -511,11 +517,11 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
 
                 <div className="bg-slate-50 p-4 rounded-2xl">
                   <p className="text-sm font-bold text-slate-400 uppercase">Paciente</p>
-                  <p className="text-2xl font-bold">{profile?.honorifico} {profile?.pacienteNombre}</p>
+                  <p className="text-xl sm:text-2xl font-bold">{profile?.honorifico} {profile?.pacienteNombre}</p>
                 </div>
                 <a
                   href={`tel:${profile?.familiarId}`}
-                  className="w-full bg-emerald-500 text-white p-6 rounded-2xl flex items-center justify-center gap-4 shadow-xl active:scale-95 transition-transform"
+                  className="w-full bg-emerald-500 text-white p-4 sm:p-6 rounded-2xl flex items-center justify-center gap-3 sm:gap-4 shadow-xl active:scale-95 transition-transform"
                 >
                   <Phone />
                   <span className="font-black uppercase tracking-widest">Llamar a Emergencia</span>
