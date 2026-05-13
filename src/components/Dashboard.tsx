@@ -11,6 +11,8 @@ import {
   Mic, Volume2, ShieldCheck, HeartPulse, X, Phone,
   Wifi, WifiOff, Send, AlertCircle, RotateCcw, Droplets
 } from 'lucide-react';
+import { db } from '../firebase/config';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface DashboardProps {
   esperandoConfirmacion: { tipo: string; id: string; nombre: string } | null;
@@ -31,8 +33,12 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
   const [ultimoMensajeAsistente, setUltimoMensajeAsistente] = useState('');
   const [estaProcesando, setEstaProcesando] = useState(false);
   const [mostrarAgua, setMostrarAgua] = useState(false);
+  const [modoSOS, setModoSOS] = useState(false);
 
   const procesandoRef = useRef(false);
+  const modoSOSRef = useRef(false);
+
+  const pacienteId = profile?.rol === 'paciente' ? profile.uid : profile?.pacienteId;
 
   const emitirRespuesta = (mensaje: string) => {
     setUltimoMensajeAsistente(mensaje);
@@ -97,6 +103,36 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
     detenerEscucha();
   };
 
+  // --- SOS CON VOZ ---
+  // Al presionar SOS: desbloquea audio iOS, abre el modal y arranca a escuchar
+  // en "modo SOS" — la transcripción se envía como alerta a Firestore en lugar de
+  // pasar por el asistente de IA.
+  const alPresionarSOS = () => {
+    unlock();
+    setMostrarFicha(true);
+    modoSOSRef.current = true;
+    setModoSOS(true);
+    iniciarEscucha();
+  };
+
+  const cerrarModalSOS = () => {
+    setMostrarFicha(false);
+    if (modoSOSRef.current) {
+      modoSOSRef.current = false;
+      setModoSOS(false);
+      detenerEscucha();
+    }
+  };
+
+  // Si el micrófono falla en medio de SOS (offline, permiso denegado, etc.), salimos del modo SOS
+  // para no dejar el modal colgado en estado "Preparando micrófono..."
+  useEffect(() => {
+    if (modoSOS && errorVoz) {
+      modoSOSRef.current = false;
+      setModoSOS(false);
+    }
+  }, [errorVoz, modoSOS]);
+
   // --- PROCESAMIENTO DE VOZ ---
   useEffect(() => {
     const procesarEntradaVoz = async () => {
@@ -107,6 +143,21 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
       limpiarTranscripcion();
 
       try {
+        // SOS: enviar lo que dijo el paciente como alerta urgente al cuidador
+        if (modoSOSRef.current && pacienteId) {
+          modoSOSRef.current = false;
+          setModoSOS(false);
+          await addDoc(collection(db, 'usuarios', pacienteId, 'alerts'), {
+            tipo: 'emergencia',
+            nivel: 'critico',
+            mensaje: `🆘 ${profile?.pacienteNombre} necesita ayuda: "${textoAProcesar}"`,
+            createdAt: serverTimestamp(),
+            resuelta: false,
+          });
+          emitirRespuesta(`Listo ${profile?.honorifico} ${profile?.pacienteNombre}. Ya le avisé a ${profile?.familiarNombre || 'su familia'} lo que me dijo.`);
+          return;
+        }
+
         if (esperandoConfirmacion?.tipo === 'pastilla') {
           const m = textoAProcesar.toLowerCase();
           if (m.includes('sí') || m.includes('si') || m.includes('ya') || m.includes('listo') || m.includes('claro')) {
@@ -196,7 +247,7 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
         </div>
 
         <button
-          onClick={() => setMostrarFicha(true)}
+          onClick={alPresionarSOS}
           className="w-12 h-12 bg-red-600 hover:bg-red-700 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all focus:outline-none focus:ring-4 focus:ring-red-300"
           aria-label="Abrir ficha de emergencia SOS"
         >
@@ -423,9 +474,32 @@ export const Dashboard = ({ esperandoConfirmacion, setEsperandoConfirmacion }: D
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white w-full max-w-lg rounded-[40px] p-8">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-black text-red-600 uppercase tracking-tighter">Ficha SOS</h2>
-                <button onClick={() => setMostrarFicha(false)} className="p-2 bg-slate-100 rounded-full"><X /></button>
+                <button onClick={cerrarModalSOS} className="p-2 bg-slate-100 rounded-full"><X /></button>
               </div>
               <div className="space-y-4">
+
+                {/* Indicador de escucha activa en modo SOS */}
+                {modoSOS && (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+                    {escuchando ? (
+                      <>
+                        <Mic size={28} className="mx-auto text-red-500 animate-pulse mb-2" />
+                        <p className="text-red-700 font-bold text-sm">Escuchando... diga lo que necesita</p>
+                        {transcripcionInterim && (
+                          <p className="text-xs text-red-400 mt-1 italic">"{transcripcionInterim}"</p>
+                        )}
+                      </>
+                    ) : estaProcesando ? (
+                      <>
+                        <div className="animate-spin rounded-full h-7 w-7 border-b-4 border-red-600 mx-auto mb-2" />
+                        <p className="text-red-700 font-bold text-sm">Enviando alerta a {profile?.familiarNombre || 'su familia'}...</p>
+                      </>
+                    ) : (
+                      <p className="text-red-400 text-sm">Preparando micrófono...</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="bg-slate-50 p-4 rounded-2xl">
                   <p className="text-sm font-bold text-slate-400 uppercase">Paciente</p>
                   <p className="text-2xl font-bold">{profile?.honorifico} {profile?.pacienteNombre}</p>

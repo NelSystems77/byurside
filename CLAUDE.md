@@ -223,15 +223,26 @@ interface DashboardProps {
 - Input de texto fallback
 - Botón de agua 💧 (abre panel de hidratación)
 - Panel de agua: barra de progreso + 3 botones (250ml, 500ml, 1000ml)
-- Botón SOS → modal con datos de emergencia
+- Botón de micrófono (hold-to-talk) — listening solo arranca al presionar, NUNCA en background
+- Botón SOS → arranca escucha automáticamente + modal + envía alerta a Firestore con lo que diga el paciente
+- Panel de agua: barra de progreso + 3 botones (250ml, 500ml, 1000ml)
 - Indicador online/offline
 - VisualBridge para mostrar respuestas de Danay
 
-**Data Flow:**
-1. Usuario habla → `useEscuchar` captura transcripción
-2. Si `esperandoConfirmacion.tipo === 'pastilla'` → confirmar toma → `descontarDosis()`
-3. Sino → `useIA.procesarComando()` → respuesta Danay
-4. Respuesta hablada vía `useVoz.hablar()` + mostrada en `VisualBridge`
+**Data Flow (voz normal):**
+1. Usuario presiona y mantiene micrófono → `iniciarEscucha()` — el ASR solo corre mientras el botón está presionado
+2. Al soltar → `detenerEscucha()` → transcripción disponible
+3. Si `modoSOSRef.current` → escribir alerta en Firestore → `emitirRespuesta()`
+4. Si `esperandoConfirmacion.tipo === 'pastilla'` → confirmar toma → `descontarDosis()`
+5. Sino → `useIA.procesarComando()` → respuesta Danay
+
+**Data Flow (SOS):**
+1. Paciente presiona botón SOS → `alPresionarSOS()`: `unlock()` + `iniciarEscucha()` + `modoSOSRef = true`
+2. Modal se abre con indicador de micrófono pulsando en rojo
+3. Paciente habla → transcripción llega
+4. `addDoc(alerts, { tipo: 'emergencia', nivel: 'critico', mensaje: "🆘 [nombre] necesita ayuda: '[texto]'" })` → cuidador lo ve en tiempo real
+5. Danay confirma con voz: "Ya le avisé a [familiarNombre]"
+6. Si hay error de voz (offline, permiso denegado) → `modoSOS` se resetea automáticamente, modal sigue abierto con botón de llamada
 
 ---
 
@@ -450,6 +461,7 @@ Usar este patrón en TODOS los hooks y componentes. Nunca hardcodear `"paciente_
 | "Don Don Carlos" — honorífico duplicado | `AuthContext.tsx`, `seedDev.ts` | `pacienteNombre` tenía "Don Carlos" pero `honorifico` ya era "Don". Corregido a `pacienteNombre: "Carlos"` |
 | Textos < 10px — ilegibles para adultos mayores | `Dashboard.tsx`, `RoleSelector.tsx`, `CaregiverDashboard.tsx`, `CaregiverMeds.tsx` | Elevados a mínimo `text-xs` (12px); instrucciones del paciente a `text-sm` (14px); etiquetas de tab nav de 8px a 11px |
 | `setMapReady is not defined` — crash al abrir tab Mapa | `CaregiverMap.tsx` | `whenReady={() => setMapReady(true)}` en `MapContainer` usaba variable inexistente. Eliminada la prop — `MapController` ya maneja `invalidateSize()` |
+| SOS no escuchaba ni enviaba alerta al cuidador | `Dashboard.tsx` | Botón SOS solo abría modal. Ahora: `alPresionarSOS()` llama `unlock()` + `iniciarEscucha()` + activa `modoSOSRef`. Transcripción se guarda en `alerts` con nivel 'critico'. Modal muestra mic animado mientras escucha. |
 | Error `network` en Edge — voz no funciona (Don Carlos no puede hablar) | `useEscuchar.ts` | Edge usa ASR de Microsoft que no soporta `es-CR` → lanza `network`. Fix: `getSpeechLang()` retorna `es-ES` en Edge/Safari. Además: (1) instancia se recrea tras cada error (`recognitionRef = null` en `onerror`), (2) auto-retry hasta 2 veces en error `network` transitorio vía `autoRetry` state + `useEffect` con 700ms. |
 | Voz NO funciona en iOS, Android ni Windows — micrófono silencioso | `useEscuchar.ts` | Tres bugs combinados: (1) `getSpeechLang()` no detectaba iOS/Android → retornaba `es-CR` que Apple ASR y Google ASR rechazan con `network`. Fix: iOS/Android → `es-ES`. (2) `iniciarEscucha` era `async` con `await verificarConexion()` antes de `.start()` — iOS requiere que `.start()` se llame sincrónicamente en el user-gesture handler; el `await` rompía ese contexto. Fix: función ahora síncrona, check de `navigator.onLine` inline. (3) `detenerEscucha` dependía de `escuchando` state (stale closure) → si el usuario soltaba el botón antes de que `onstart` disparara, `escuchando` era `false` y `.stop()` nunca se llamaba. Fix: eliminada dependencia en `escuchando`, ahora usa solo `recognitionRef`. |
 | Hold-to-talk no mostraba texto en tiempo real mientras se hablaba | `useEscuchar.ts`, `Dashboard.tsx` | `interimResults: false` → nunca se mostraba lo que el ASR estaba detectando. Fix: `interimResults: true`, nuevo estado `transcripcionInterim` para texto en vivo. Dashboard ahora muestra el texto interim en VisualBridge durante la escucha (con tipo `usuario`). |
@@ -609,7 +621,8 @@ git push origin main
 
 ---
 
-**Document Version:** 2.9 | **Updated:** May 12, 2026  
+**Document Version:** 2.10 | **Updated:** May 12, 2026  
+**Cambios v2.10:** SOS con voz implementado en `Dashboard.tsx` — botón SOS ahora llama `alPresionarSOS()`: desbloquea audio iOS (`unlock()`), abre el modal y arranca `iniciarEscucha()` con `modoSOSRef = true`. Cuando llega la transcripción, en vez de ir a la IA se escribe directamente a `usuarios/{pacienteId}/alerts` con `tipo: 'emergencia'`, `nivel: 'critico'` y el texto del paciente. Danay confirma por voz. Si el micrófono falla (offline, permiso), `modoSOS` se resetea automáticamente via `useEffect` que observa `errorVoz`. El modal muestra un indicador animado de micrófono mientras escucha, spinner mientras envía, y siempre mantiene visible el botón de llamada telefónica. El listening del botón micrófono normal no cambió: sigue siendo estrictamente hold-to-talk, sin polling ni escucha en background.  
 **Cambios v2.9:** Tres bugs de voz corregidos: (1) Loop infinito en Edge — `onstart` reseteaba `retryCountRef` causando que los reintentos nunca acumularan; separada función `_iniciarRetry` para auto-retries vs `iniciarEscucha` para starts frescos del usuario. (2) iOS — al soltar el botón la transcripción no llegaba al asistente porque iOS Safari omite `onresult` final después de `.stop()`; `interimRef` preserva el texto interim y `onend` lo promueve a final. (3) iOS — TTS silencioso porque `speak()` llamado desde contexto async es bloqueado; nueva función `unlock()` en `useVoz` llamada desde `alPresionarMicro` (user-gesture), más delay de 50ms post-`cancel()` en iOS y fallback timeout de 1500ms para `vocesListas`. 83/83 tests pasando.  
 **Cambios v2.8:** Fix crítico de voz multiplataforma en `useEscuchar.ts` — tres bugs combinados que causaban que el micrófono no funcionara en iOS, Android ni Windows: (1) `getSpeechLang()` ahora retorna `es-ES` para iOS y Android (Apple/Google ASR rechazan `es-CR` con error `network`); (2) `iniciarEscucha` convertida a función síncrona — iOS Safari requiere que `.start()` se llame en el mismo call stack del user-gesture handler (el `await verificarConexion()` anterior rompía ese contexto); (3) `detenerEscucha` reescrita sin dependencia en `escuchando` state para evitar stale closure — antes, si el usuario soltaba el botón antes de que `onstart` disparara, `.stop()` nunca se llamaba. También: `interimResults: true` + nuevo estado `transcripcionInterim` para mostrar texto en vivo durante la escucha. Dashboard actualizado: VisualBridge muestra texto interim durante escucha, `onTouchCancel`/`onMouseLeave` añadidos al botón micrófono. 83/83 tests pasando.  
 **Cambios v2.7:** Bug de voz corregido en `useEscuchar.ts` — Edge lanzaba `error network` porque Microsoft ASR no soporta `es-CR`. Fix: `getSpeechLang()` retorna `es-ES` en Edge/Safari. También: instancia de Recognition siempre se recrea tras error (eliminando instancias rotas), y auto-retry hasta 2 veces en error de red transitorio via `autoRetry` state + `useEffect`.  
