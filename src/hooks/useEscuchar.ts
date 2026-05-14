@@ -156,6 +156,13 @@ export const useEscuchar = () => {
     }
   }, [escuchando, crearInstancia]);
 
+  // Stable ref to the latest _iniciarRetry. Prevents the auto-retry effect from
+  // re-triggering on every escuchando change: without this, every true→false flip of
+  // escuchando recreates _iniciarRetry, the effect re-runs (autoRetry is still > 0),
+  // schedules another retry, which flips escuchando again — infinite loop.
+  const _iniciarRetryRef = useRef(_iniciarRetry);
+  useEffect(() => { _iniciarRetryRef.current = _iniciarRetry; });
+
   // IMPORTANT: Must stay synchronous (no await before .start()).
   // iOS Safari requires speech recognition to be started synchronously within
   // the same user-gesture call stack. Any await breaks that context and the
@@ -192,11 +199,14 @@ export const useEscuchar = () => {
     }
   }, [escuchando, crearInstancia]);
 
+  // Only re-runs when autoRetry increments (a new network error). Using the ref
+  // instead of _iniciarRetry directly breaks the escuchando-change → effect-retrigger loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (autoRetry === 0) return;
-    const t = setTimeout(_iniciarRetry, 700);
+    const t = setTimeout(() => _iniciarRetryRef.current(), 700);
     return () => clearTimeout(t);
-  }, [autoRetry, _iniciarRetry]);
+  }, [autoRetry]);
 
   const simularVoz = useCallback((textoSimulado: string) => {
     if (modoOffline && import.meta.env.DEV) {
